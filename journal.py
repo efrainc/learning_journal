@@ -80,7 +80,10 @@ def main():
     settings = {}
     settings['reload_all'] = os.environ.get('DEBUG', True)
     settings['debug_all'] = os.environ.get('DEBUG', True)
-    # secret value for session signing:
+    settings['db'] = os.environ.get(
+        'DATABASE_URL', 'dbname=learning_journal user=efrain-petercamacho'
+    )
+
     secret = os.environ.get('JOURNAL_SESSION_SECRET', 'itsaseekrit')
     session_factory = SignedCookieSessionFactory(secret)
     # configuration setup
@@ -94,10 +97,7 @@ def main():
     app = config.make_wsgi_app()
     return app
 
-    # # in the "main" function:
-    # settings['reload_all'] = os.environ.get('DEBUG', True) # <- THERE NOW
-    # settings['debug_all'] = os.environ.get('DEBUG', True) # <- THERE NOW
-    # ADD THIS  vvv
+
     
 def write_entry(request):
     """write a single entry to the database"""
@@ -106,6 +106,7 @@ def write_entry(request):
     created = datetime.datetime.utcnow()
     request.db.cursor().execute(INSERT_ENTRY, [title, text, created])
 
+# @view_config(route_name='home', renderer='templates/list.jinja2')
 def read_entries(request):
     """return a list of all entries as dicts"""
     cursor = request.db.cursor()

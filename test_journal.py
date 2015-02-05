@@ -6,6 +6,7 @@ from journal import connect_db
 from journal import DB_SCHEMA
 import datetime
 from journal import INSERT_ENTRY
+import os
 
 
 
