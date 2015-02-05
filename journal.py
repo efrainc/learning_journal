@@ -2,7 +2,8 @@
 import os
 import logging
 from pyramid.events import NewRequest, subscriber
-import transaction
+import datetime
+# import transaction
 from pyramid.config import Configurator
 from pyramid.session import SignedCookieSessionFactory
 from pyramid.view import view_config
@@ -17,6 +18,14 @@ CREATE TABLE IF NOT EXISTS entries (
     text TEXT NOT NULL,
     created TIMESTAMP NOT NULL
 )
+"""
+
+INSERT_ENTRY = """
+INSERT INTO entries (title, text, created) VALUES (%s, %s, %s)
+"""
+
+DB_ENTRIES_LIST = """
+SELECT id, title, text, created FROM entries ORDER BY created DESC
 """
 
 # add this just below the SQL table definition we just created
@@ -79,6 +88,7 @@ def main():
         settings=settings,
         session_factory=session_factory
     )
+    config.include('pyramid_jinja2')
     config.add_route('home', '/')
     config.scan()
     app = config.make_wsgi_app()
@@ -89,8 +99,20 @@ def main():
     # settings['debug_all'] = os.environ.get('DEBUG', True) # <- THERE NOW
     # ADD THIS  vvv
     
+def write_entry(request):
+    """write a single entry to the database"""
+    title = request.params.get('title', None)
+    text = request.params.get('text', None)
+    created = datetime.datetime.utcnow()
+    request.db.cursor().execute(INSERT_ENTRY, [title, text, created])
 
-
+def read_entries(request):
+    """return a list of all entries as dicts"""
+    cursor = request.db.cursor()
+    cursor.execute(DB_ENTRIES_LIST)
+    keys = ('id', 'title', 'text', 'created')
+    entries = [dict(zip(keys, row)) for row in cursor.fetchall()]
+    return {'entries': entries}
 
 if __name__ == '__main__':
     app = main()
