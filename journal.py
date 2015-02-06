@@ -33,7 +33,7 @@ logging.basicConfig()
 log = logging.getLogger(__file__)
 
 
-@view_config(route_name='home', renderer='string')
+# @view_config(route_name='home', renderer='string')
 def home(request):
     return "Hello World"
 
@@ -106,7 +106,7 @@ def write_entry(request):
     created = datetime.datetime.utcnow()
     request.db.cursor().execute(INSERT_ENTRY, [title, text, created])
 
-# @view_config(route_name='home', renderer='templates/list.jinja2')
+@view_config(route_name='home', renderer='templates/list.jinja2')
 def read_entries(request):
     """return a list of all entries as dicts"""
     cursor = request.db.cursor()
