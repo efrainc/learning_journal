@@ -14,6 +14,9 @@ from pyramid.httpexceptions import HTTPFound, HTTPInternalServerError
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from cryptacular.bcrypt import BCRYPTPasswordManager
+from pyramid.security import remember, forget
+
+here = os.path.dirname(os.path.abspath(__file__))
 
 
 DB_SCHEMA = """
@@ -106,8 +109,11 @@ def main():
         authorization_policy=ACLAuthorizationPolicy(),
     )
     config.include('pyramid_jinja2')
+    config.add_static_view('static', os.path.join(here, 'static'))
     config.add_route('home', '/')
     config.add_route('add', '/add')
+    config.add_route('login','/login')
+    config.add_route('logout', '/logout')
     config.scan()
     app = config.make_wsgi_app()
     return app
@@ -152,6 +158,30 @@ def read_entries(request):
     keys = ('id', 'title', 'text', 'created')
     entries = [dict(zip(keys, row)) for row in cursor.fetchall()]
     return {'entries': entries}
+
+@view_config(route_name='login', renderer="templates/login.jinja2")
+def login(request):
+    """authenticate a user by username/password"""
+    username = request.params.get('username', '')
+    error = ''
+    if request.method == 'POST':
+        error = "Login Failed"
+        authenticated = False
+        try:
+            authenticated = do_login(request)
+        except ValueError as e:
+            error = str(e)
+
+        if authenticated:
+            headers = remember(request, username)
+            return HTTPFound(request.route_url('home'), headers=headers)
+
+    return {'error': error, 'username': username}
+
+@view_config(route_name='logout')
+def logout(request):
+    headers = forget(request)
+    return HTTPFound(request.route_url('home'), headers=headers)
 
 if __name__ == '__main__':
     app = main()
