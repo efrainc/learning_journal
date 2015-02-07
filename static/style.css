@@ -5,7 +5,10 @@ body{
 header{
     margin:0;
     padding:0 0.75em;
-    width:100%;}
+    width:100%;
+    height: 200em;
+    background: #6ab47b;
+    border-color: #599a68;}
 header:after{
     content:"";
     display:table;
