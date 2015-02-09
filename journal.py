@@ -41,8 +41,8 @@ log = logging.getLogger(__file__)
 
 
 # @view_config(route_name='home', renderer='string')
-# def home(request):
-#     return "Hello World"
+def home(request):
+    return "Hello World"
 
 def connect_db(settings):
     """Return a connection to the configured database"""
@@ -113,6 +113,7 @@ def main():
     config.add_route('add', '/add')
     config.add_route('login','/login')
     config.add_route('logout', '/logout')
+    config.add_route('about','/about')
     config.scan()
     app = config.make_wsgi_app()
     return app
@@ -182,9 +183,7 @@ def logout(request):
     headers = forget(request)
     return HTTPFound(request.route_url('home'), headers=headers)
 
-# @view_config(route_name='about', renderer="templates/about.jinja2")
-# def about(request):
-#     return 
+
 
 if __name__ == '__main__':
     app = main()
