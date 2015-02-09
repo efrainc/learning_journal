@@ -120,8 +120,8 @@ def main():
     
 def write_entry(request):
     """write a single entry to the database"""
-    title = request.params.get('title', None)
-    text = request.params.get('text', None)
+    title = request.params.get(u'title', None)
+    text = request.params.get(u'text', None)
     created = datetime.datetime.utcnow()
     request.db.cursor().execute(INSERT_ENTRY, [title, text, created])
 
