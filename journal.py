@@ -2,7 +2,6 @@
 import os
 import logging
 import psycopg2
-import datetime
 import jinja2
 from datetime import datetime
 from pyramid.events import NewRequest, subscriber
@@ -96,7 +95,7 @@ def write_entry(request):
     """write a single entry to the database"""
     title = request.params.get('title', None)
     text = request.params.get('text', None)
-    created = datetime.datetime.utcnow()
+    created = datetime.utcnow()
     request.db.cursor().execute(INSERT_ENTRY, (title, text, created))
     return {}
 
@@ -104,7 +103,7 @@ def write_entry(request):
 def update(request, identification):
     title = request.params.get('title', None)
     text = request.params.get('text', None)
-    created = datetime.datetime.utcnow()
+    created = datetime.utcnow()
     request.db.cursor().execute(UPDATE_ENTRY, (title, text, created, identification))
     return {}
 
