@@ -10,7 +10,7 @@ from pyramid.session import SignedCookieSessionFactory
 from pyramid.view import view_config
 from waitress import serve
 from contextlib import closing
-from pyramid.httpexceptions import HTTPFound, HTTPInternalServerError
+from pyramid.httpexceptions import HTTPFound, HTTPInternalServerError, HTTPUnauthorized
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from cryptacular.bcrypt import BCRYPTPasswordManager
@@ -18,6 +18,7 @@ from pyramid.security import remember, forget
 import markdown
 import json
 import time
+import tweepy
 
 here = os.path.dirname(os.path.abspath(__file__))
 
@@ -59,9 +60,11 @@ DELETE FROM entries WHERE id=%s;
 logging.basicConfig()
 log = logging.getLogger(__file__)
 
+
 def connect_db(settings):
     """Return a connection to the configured database"""
     return psycopg2.connect(settings['db'])
+
 
 def init_db():
     """Create database dables defined by DB_SCHEMA
@@ -76,12 +79,14 @@ def init_db():
         db.cursor().execute(DB_SCHEMA)
         db.commit()
 
+
 @subscriber(NewRequest)
 def open_connection(event):
     request = event.request
     settings = request.registry.settings
     request.db = connect_db(settings)
     request.add_finished_callback(close_connection)
+
 
 def close_connection(request):
     """close the database connection for this request
@@ -97,11 +102,12 @@ def close_connection(request):
             db.commit()
         request.db.close()
 
+
 def write_entry(request):
     """write a single entry to the database"""
-    title = request.params.get('title', None)
-    text = request.params.get('text', None)
-    created = datetime.utcnow()
+    title = request.params['title']
+    text = request.params['text']
+    created = datetime.today()
     request.db.cursor().execute(INSERT_ENTRY, (title, text, created))
     return {}
 
@@ -113,7 +119,8 @@ def update(request, identification):
     request.db.cursor().execute(UPDATE_ENTRY, (title, text, created, identification))
     return {}
 
-@view_config(route_name='add', request_method='POST', renderer='json')
+
+@view_config(route_name='add', request_method='POST', renderer="json")
 def add_entry(request):
     if request.authenticated_userid:
         if request.method == 'POST':
@@ -127,8 +134,10 @@ def add_entry(request):
             keys = ('id', 'title', 'text', 'created')
             entry = dict(zip(keys, cursor.fetchone()))
             entry['text'] = markdown.markdown(entry['text'], extensions=('codehilite', 'fenced_code'))
-            entry['created'] = time.mktime(entry['created'].timetuple())
+            entry['created'] = entry['created'].strftime('%b. %d, %Y')
             return entry
+    # return HTTPFound(request.route_url('home'))
+
 
 def get_entry(request):
     param = (request.matchdict.get('id', -1),)
@@ -136,6 +145,7 @@ def get_entry(request):
     cursor.execute(DB_FILTER, param)
     keys = ('id', 'title', 'text', 'created')
     return [dict(zip(keys, cursor.fetchone()))]
+
 
 @view_config(route_name='home', renderer='templates/list.jinja2')
 def read_entries(request):
@@ -148,6 +158,7 @@ def read_entries(request):
         entry['text'] = markdown.markdown(entry['text'], extensions=('codehilite', 'fenced_code'))
     return {'entries': entries}
 
+
 @view_config(route_name='editor', renderer="templates/editor.jinja2")
 def editor(request):
     if request.authenticated_userid:
@@ -159,17 +170,36 @@ def editor(request):
     else:
         raise HTTPUnauthorized
 
+
 @view_config(route_name='delete')
 def delete(request):
     param = request.matchdict.get('id', -1)
     request.db.cursor().execute(DELETE_ENTRY, [param])
     return HTTPFound(request.route_url('home'))
 
+
 @view_config(route_name='details', renderer="templates/details.jinja2")
 def details(request):
     entry = get_entry(request)
     entry[0]['text'] = markdown.markdown(entry[0]['text'], extensions=('codehilite', 'fenced_code'))
     return {'entries': entry}
+
+
+@view_config(route_name='tweet', renderer='json')
+def tweet_all_about_it(request):
+
+    consumer_key = 'wg0IdOvNPO6SwKNaTz7MWI9J8'
+    consumer_secret = 'OE71lxs2PqOC3hBlIwK85l6npHGsuCmwX0WScAriA4JWFqiVAe'
+    access_token = '3008504700-7ZJGjPtwOZDwEsLHBh4oyoJQdswqmLSyj1QLJI3'
+    access_token_secret = 'UNCrF1nZkurJPpT1ZSACUrGJvwFPxMH4On79Clr611OOa'
+
+    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(access_token, access_token_secret)
+
+    api = tweepy.API(auth)
+
+    api.update_status(status=request.params['title'])
+
 
 def do_login(request):
     username = request.params.get('username', None)
@@ -182,6 +212,7 @@ def do_login(request):
     if username == settings.get('auth.username', ''):
         hashed = settings.get('auth.password', '')
         return manager.check(hashed, password)
+
 
 @view_config(route_name='login', renderer="templates/login.jinja2")
 def login(request):
@@ -201,10 +232,12 @@ def login(request):
             return HTTPFound(request.route_url('home'), headers=headers)
     return {'error': error, 'username': username}
 
+
 @view_config(route_name='logout')
 def logout(request):
     headers = forget(request)
     return HTTPFound(request.route_url('home'), headers=headers)
+
 
 def main():
     """Create a configured wsgi app"""
@@ -241,9 +274,11 @@ def main():
     config.add_route('details', '/details/{id}')
     config.add_route('editor', '/editor/{id}')
     config.add_route('delete', '/delte/{id}')
+    config.add_route('tweet', '/tweet')
     config.scan()
     app = config.make_wsgi_app()
     return app
+
 
 def markd(input):
     return markdown.markdown(input, extension=['CodeHilite'])

@@ -12,13 +12,13 @@
     <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
   </head>
   <body>
-    <header>
+    <header id='header'>
        <aside id="user-controls">
         <ul>
         {% if not request.authenticated_userid %}
-          <li><a href="{{ request.route_url('login') }}">log in</a></li>
+          <li><a href="{{ request.route_url('login') }}">Login</a></li>
         {% else %}
-          <li><a href="{{ request.route_url('logout') }}">log out</a></li>
+          <li><a href="{{ request.route_url('logout') }}">Logout</a></li>
         {% endif %}
         </ul>
       </aside>
